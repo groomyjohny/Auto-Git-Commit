@@ -2,6 +2,8 @@ from datetime import datetime
 import os
 import sys
 
+version = '0.3'
+
 class Logger:
     prev_str = '\n'
  
@@ -25,12 +27,13 @@ class Logger:
 
 sys.stdout = Logger('log.txt')		
 repoPaths = None
+print(f'\nLaunched AutoGitCommit instance, version: {version}')
 
 with open('repos.txt','r') as f:
     repoPaths = f.readlines()
 for _path in repoPaths:
     path = _path[:-1] if _path[-1] == '\n' else _path # strip newline
-    print(f'Attempting to commit {path}')
+    print(f'Attempting to commit path: {path}')
     try:
         os.chdir(path)
         now = datetime.now()
@@ -39,6 +42,7 @@ for _path in repoPaths:
         print(cmd)
         os.system('git add -A')
         os.system(cmd)
+		print('Success!')
     except Exception as e:
         print(f'Path {path} failed: {e}')
     print()
