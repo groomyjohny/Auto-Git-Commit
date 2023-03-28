@@ -2,7 +2,7 @@ from datetime import datetime
 import os, sys, csv
 import time, threading
 
-version = '1.0 alpha 1'
+version = '1.0 alpha 2'
 
 class Logger:
     prev_str = '\n'
@@ -12,27 +12,30 @@ class Logger:
         self.console = sys.stdout
         self.file = open(filename, 'a')
  
-    def write(self, message):        
-        datetime_str = f'[{datetime.now()}] '
-        if not (len(self.prev_str) > 0 and self.prev_str[-1] == '\n'):
-            datetime_str = ''
-        new_message = f'{datetime_str}{message}'
-        self.lock.acquire()
-        try:
+    def write(self, message):
+        self.lock.acquire()   
+        try:     
+            datetime_str = f'[{datetime.now()}] '
+            if not (len(self.prev_str) > 0 and self.prev_str[-1] == '\n'):
+                datetime_str = ''
+            new_message = f'{datetime_str}{message}'
             self.console.write(new_message)
             self.file.write(new_message)
+            self.file.flush()
+            self.prev_str = message
         finally:
             self.lock.release()
-        self.prev_str = message
  
     def flush(self):
         self.console.flush()
         self.file.flush()
+
+sys.stdout = Logger('log.txt')
 		
 def repo_updater_routine(path, wait_time):
     wait_time = 86400 if not wait_time else float(wait_time) # if not set, then default to 1 day
     wait_time = 86400 if not wait_time else wait_time
-    print(f'Started a worker for repo {path}', f'Wait period is set to {wait_time} sec.')
+    print(f'Started a worker for repo {path} with sleep period {wait_time} sec.')
     while True:
         print(f'Attempting to commit path: {path}')
         try:
@@ -43,15 +46,14 @@ def repo_updater_routine(path, wait_time):
             print(cmd)
             os.system('git add -A')
             os.system(cmd)
-            print('Success!')
+            print('Done.')
         except Exception as e:
             print(f'Path {path} failed: {e}')
         print()
         time.sleep(wait_time)
         
-sys.stdout = Logger('log.txt')		
 repoPaths = None
-print(f'\nLaunched AutoGitCommit instance, version: {version}')
+print(f'\n\nLaunched AutoGitCommit instance, version: {version}\n')
 
 threads = []
 with open('repos.csv','r') as f:
