@@ -2,7 +2,7 @@ from datetime import datetime
 import os, sys, csv
 import time, threading
 
-version = '1.0 alpha 2'
+version = '1.0 beta 1'
 
 class Logger:
     prev_str = '\n'
@@ -13,7 +13,8 @@ class Logger:
         self.file = open(filename, 'a')
  
     def write(self, message):
-        self.lock.acquire()   
+        _my_lock = not self.lock.locked()
+        if _my_lock: self.lock.acquire()
         try:     
             datetime_str = f'[{datetime.now()}] '
             if not (len(self.prev_str) > 0 and self.prev_str[-1] == '\n'):
@@ -24,32 +25,37 @@ class Logger:
             self.file.flush()
             self.prev_str = message
         finally:
-            self.lock.release()
+            if _my_lock: self.lock.release()
  
     def flush(self):
         self.console.flush()
         self.file.flush()
 
-sys.stdout = Logger('log.txt')
+logger = Logger('log.txt')
+sys.stdout = logger
 		
 def repo_updater_routine(path, wait_time):
     wait_time = 86400 if not wait_time else float(wait_time) # if not set, then default to 1 day
     wait_time = 86400 if not wait_time else wait_time
     print(f'Started a worker for repo {path} with sleep period {wait_time} sec.')
     while True:
-        print(f'Attempting to commit path: {path}')
+        logger.lock.acquire()
         try:
-            os.chdir(path)
-            now = datetime.now()
-            msg = f'AutoGitCommit {now}'
-            cmd = f'git commit -m "{msg}"'
-            print(cmd)
-            os.system('git add -A')
-            os.system(cmd)
-            print('Done.')
-        except Exception as e:
-            print(f'Path {path} failed: {e}')
-        print()
+            print(f'Attempting to commit path: {path}')
+            try:
+                os.chdir(path)
+                now = datetime.now()
+                msg = f'AutoGitCommit {now}'
+                cmd = f'git commit -m "{msg}"'
+                print(cmd)
+                os.system('git add -A')
+                os.system(cmd)
+                print('Done.')
+            except Exception as e:
+                print(f'Path {path} failed: {e}')
+            print()
+        finally:
+            logger.lock.release()
         time.sleep(wait_time)
         
 repoPaths = None
